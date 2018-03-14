@@ -1,4 +1,95 @@
 
+# function to clean drug_class data
+clean_drug_class <- function(temp_dat) {
+  # names lower case
+  colnames(temp_dat) <- tolower(colnames(temp_dat))
+  
+  # remove all trailing and leading white spaces
+  temp_dat <- as.data.frame(apply(temp_dat, 2, function(x) trimws(x)), stringsAsFactors = F)
+  
+  # make all text lower case
+  temp_dat <- as.data.frame(apply(temp_dat, 2, function(x) tolower(x)), stringsAsFactors = F)
+  
+  # add and remove to homogenize columns
+  temp_dat$benzo <- gsub(' ', '_', temp_dat$benzo)
+  temp_dat$barb <- gsub(' ', '_', temp_dat$barb)
+  temp_dat$cns <- unlist(lapply(strsplit(temp_dat$cns, ' '), function(x) x[1]))
+  temp_dat$opiate <- unlist(lapply(strsplit(temp_dat$opiate, ' '), function(x) x[1]))
+  temp_dat$psychotic <- unlist(lapply(strsplit(temp_dat$psychotic, ' '), function(x) x[1]))
+  temp_dat$muscle <- unlist(lapply(strsplit(temp_dat$muscle, ' '), function(x) x[1]))
+  temp_dat$pain <- unlist(lapply(strsplit(temp_dat$pain, '\\s+'), function(x) x[1]))
+  
+  return(temp_dat)
+  
+}
+
+
+# function to grab drug class names from drug_class dataset and convert to grepl format
+get_generics <- function(class) {
+  drug_names <- toupper(paste(drug_class[, class][!is.na(drug_class[, class])] , collapse = '|'))
+  return(drug_names)
+}
+
+
+
+keep_columns <- function(temp_dat){
+  # keep only relevant columns 
+  keep_cols <- c('npi', 'nppes_credentials', 'nppes_provider_gender', "nppes_provider_street1", 
+                 "nppes_provider_street2", "nppes_provider_city","nppes_provider_zip5", 
+                 "nppes_provider_zip4","nppes_provider_state", "specialty_description",
+                 "medicare_prvdr_enroll_status","total_claim_count","total_day_supply",
+                 "bene_count", "total_claim_count_ge65",  "total_drug_cost_ge65",
+                 "total_day_supply_ge65","bene_count_ge65", "brand_claim_count", "brand_drug_cost", "generic_suppress_flag",
+                 "generic_claim_count", "generic_drug_cost", "average_age_of_beneficiaries",
+                 "beneficiary_female_count","beneficiary_male_count", "beneficiary_race_white_count", 
+                 "beneficiary_race_black_count","beneficiary_race_asian_pi_count", "beneficiary_race_hispanic_count",  
+                 "beneficiary_race_nat_ind_count", "beneficiary_race_other_count", "beneficiary_nondual_count", 
+                 "beneficiary_dual_count", "beneficiary_average_risk_score")
+  
+  temp_dat <- temp_dat[, keep_cols]
+  
+  # clean column names
+  colnames(temp_dat) <- gsub('nppes_provider_|nppes_', '', colnames(temp_dat))
+  
+  
+  return(temp_dat)
+  
+}
+
+# function for cleaning credientials
+clean_creds <- function(temp_dat) {
+  # creat temp object to clean up credentials
+  temp_cred <- temp_dat$credentials
+  temp_cred_clean <- as.data.frame(gsub('[,]| |[-]|[.]|[&]|[/]', replacement = '', temp_cred))
+  colnames(temp_cred_clean) <- 'original'
+  
+  temp_cred_clean$original <- as.character(temp_cred_clean$original)
+  md <- '^MD$|MD$|^MD|MEDICALDOCTOR'
+  dentist <- '^DDS$|^DMD$|FAGD$|^DDS|DDS$|^DMD'
+  np_pa <- '^NP$|^PA*|ASSISTANT|RACTITIONER|^PA|ARNP|APRN|CRNP|NP*|RPAC|PA$|PAC$'
+  rn <- '^RN'
+  od <- '^OD$|OD$|^OD'
+  do <- '^DO$|DO$|^DO'
+  dpm <- '^DPM$|DPM$|^DPM'
+  
+  # match professions
+  temp_cred_clean$abbr <- ifelse(grepl(rn, temp_cred_clean$original), 'RN', 
+                                 ifelse(grepl(np_pa, temp_cred_clean$original), 'NP_PA',
+                                        ifelse(grepl(dentist, temp_cred_clean$original), 'Dentist',
+                                               ifelse(grepl(md, temp_cred_clean$original), 'MD', 
+                                                      ifelse(grepl(od, temp_cred_clean$original), 'OD', 
+                                                             ifelse(grepl(dpm, temp_cred_clean$original), 'Podiatrist', 
+                                                                    ifelse(grepl(do, temp_cred_clean$original), 'DO', 'Other')))))))
+  
+  # create new variables in temp_dat data
+  temp_dat$credentials <- temp_cred_clean$abbr
+  
+  return(temp_dat)
+  
+}
+
+
+
 ##########
 # random forest prediction
 ##########
@@ -154,9 +245,7 @@ pred_random_forest <- function(dat, k_folds, class){
 ##########
 # function for logistic regression
 ##########
-dat <- dat_mod[1:1000,]
-k_folds <- 10
-class <- T
+
 
 logit_fit <- function(dat, kfolds, class) {
   
