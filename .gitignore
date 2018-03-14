@@ -8,6 +8,11 @@
 # Example code in package build process
 *-Ex.R
 
+Data/*
+
+/Data/*
+
+
 # Output files from R CMD build
 /*.tar.gz
 
