@@ -1,3 +1,43 @@
+# function to grab drug class names from drug_class dataset and convert to grepl format
+get_generics <- function(class) {
+  drug_names <- toupper(paste(drug_class[, class][!is.na(drug_class[, class])] , collapse = '|'))
+  return(drug_names)
+}
+
+
+# function for classifying drugs 
+classify_drugs <- function(temp_dat){
+  
+  # get the generic drugs associated with this class in one string
+  opiates <- get_generics('opiate')
+  benzo <- get_generics('benzo')
+  barb <- get_generics('barb')
+  cns <- get_generics('cns')
+  sleep <- get_generics('sleep')
+  anti <- get_generics('anti_dep')
+  psych <- get_generics('psychotic')
+  pain <- get_generics('pain')
+  muscle <- get_generics('muscle')
+  
+  
+  # if else statement to classify each drug
+  temp_dat$class <- ifelse(grepl(opiates, temp_dat$drug_name), 'opiate',
+                               ifelse(grepl(benzo, temp_dat$drug_name), 'benzo',
+                                      ifelse(grepl(barb, temp_dat$drug_name), 'barb',
+                                             ifelse(grepl(cns, temp_dat$drug_name), 'cns',
+                                                    ifelse(grepl(sleep, temp_dat$drug_name), 'sleep',
+                                                           ifelse(grepl(anti, temp_dat$drug_name), 'anti',
+                                                                  ifelse(grepl(psych, temp_dat$drug_name), 'psych', 
+                                                                         ifelse(grepl(muscle, temp_dat$drug_name), 'musc_relax',
+                                                                                ifelse(grepl(pain, temp_dat$drug_name), 'pain','other')))))))))
+  
+  return(temp_dat)
+  
+}
+
+
+
+
 
 # function to clean drug_class data
 clean_drug_class <- function(temp_dat) {
@@ -24,11 +64,7 @@ clean_drug_class <- function(temp_dat) {
 }
 
 
-# function to grab drug class names from drug_class dataset and convert to grepl format
-get_generics <- function(class) {
-  drug_names <- toupper(paste(drug_class[, class][!is.na(drug_class[, class])] , collapse = '|'))
-  return(drug_names)
-}
+
 
 
 
@@ -242,79 +278,79 @@ pred_random_forest <- function(dat, k_folds, class){
 
 
 
-##########
-# function for logistic regression
-##########
-
-
-logit_fit <- function(dat, kfolds, class) {
-  
-  # get complete cases
-  dat <- dat[complete.cases(dat),]
-  
-  # turn any character to factor
-  for(col in 1:ncol(dat)) {
-    
-    if(typeof(dat[, col]) == 'character') {
-      
-      dat[, col] <- as.factor(dat[, col])
-      
-    } else  {
-      print('not character')
-    }
-  }
-  
-  glm()
-  
-}
-
-##########
-# function for knn imputation
-##########
-
-# get imputation column names
-knn_imputation <- function(original_data, column_name) {
-  
-  # get imputation data
-  original_data$npi <- as.factor(original_data$npi)
-  incomplete_data <- as.data.frame(original_data[, c('npi', column_name)])
-  
-  # get column vector(s) to impute on
-  npi_vector <- incomplete_data$npi
-  missing_vector <- incomplete_data[, column_name]
-  
-  # Transpose the data for KNN
-  # KNN requires samples in the columns
-  missing_vector <- as.matrix((t(missing_vector)))
-  # Impute the missing data
-  imputed_data <- impute.knn(missing_vector, 
-                             k = 10, 
-                             rowmax = 1, 
-                             colmax = 1)$data
-  
-  
-  # transpose back to samples in rows
-  imputed_data <- t(imputed_data)
-  
-  # get missing index
-  missing_index <- is.na(imputed_data)
-  
-  # remove NAs that were not imputed on
-  imputed_data <- imputed_data[!is.na(imputed_data)]
-  
-  # subset npi by missing index 
-  npi_vector <- npi_vector[!missing_index]
-  
-  # combine imputed data and npi and transpose 
-  complete_data <- cbind(npi_vector, imputed_data)
-  
-  # subset full data by missing index and fill old varibales
-  original_data <- original_data[!missing_index, ]
-  original_data$beneficiary_average_risk_score <- complete_data[,2]
-  
-  return(original_data)
-}
-
-
-
-
+# ##########
+# # function for logistic regression
+# ##########
+# 
+# 
+# logit_fit <- function(dat, kfolds, class) {
+#   
+#   # get complete cases
+#   dat <- dat[complete.cases(dat),]
+#   
+#   # turn any character to factor
+#   for(col in 1:ncol(dat)) {
+#     
+#     if(typeof(dat[, col]) == 'character') {
+#       
+#       dat[, col] <- as.factor(dat[, col])
+#       
+#     } else  {
+#       print('not character')
+#     }
+#   }
+#   
+#   glm()
+#   
+# }
+# 
+# ##########
+# # function for knn imputation
+# ##########
+# 
+# # get imputation column names
+# knn_imputation <- function(original_data, column_name) {
+#   
+#   # get imputation data
+#   original_data$npi <- as.factor(original_data$npi)
+#   incomplete_data <- as.data.frame(original_data[, c('npi', column_name)])
+#   
+#   # get column vector(s) to impute on
+#   npi_vector <- incomplete_data$npi
+#   missing_vector <- incomplete_data[, column_name]
+#   
+#   # Transpose the data for KNN
+#   # KNN requires samples in the columns
+#   missing_vector <- as.matrix((t(missing_vector)))
+#   # Impute the missing data
+#   imputed_data <- impute.knn(missing_vector, 
+#                              k = 10, 
+#                              rowmax = 1, 
+#                              colmax = 1)$data
+#   
+#   
+#   # transpose back to samples in rows
+#   imputed_data <- t(imputed_data)
+#   
+#   # get missing index
+#   missing_index <- is.na(imputed_data)
+#   
+#   # remove NAs that were not imputed on
+#   imputed_data <- imputed_data[!is.na(imputed_data)]
+#   
+#   # subset npi by missing index 
+#   npi_vector <- npi_vector[!missing_index]
+#   
+#   # combine imputed data and npi and transpose 
+#   complete_data <- cbind(npi_vector, imputed_data)
+#   
+#   # subset full data by missing index and fill old varibales
+#   original_data <- original_data[!missing_index, ]
+#   original_data$beneficiary_average_risk_score <- complete_data[,2]
+#   
+#   return(original_data)
+# }
+# 
+# 
+# 
+# 
