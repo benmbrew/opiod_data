@@ -70,9 +70,10 @@ if('dat_full.rda' %in% dir(saved_dir)){
   # fill NAs with zeros
   dat_wide[is.na(dat_wide)] <- 0
   
-  # HERE
   # read in unique prescriber data
   system.time(dat_prescriber <- read.delim(paste0(prescriber_dir, 'raw_prescriber.txt')))
+  # load('~/Desktop/temp_pres.RData')
+  # HERE
   
   # keep only certain columns and clean
   dat_prescriber <- keep_columns(dat_prescriber)
@@ -109,10 +110,15 @@ if('dat_full.rda' %in% dir(saved_dir)){
   dat_full$city.y <- tolower(dat_full$city.y)
   dat_full$city.x <- dat_full$state.x <- NULL
   names(dat_full) <- gsub('.y', '',names(dat_full), fixed = TRUE)
-
+  
+  # recode speciality so that any level with under 200 observations is classified as other
+  # first get counts
+  dat_full <- dat_full %>% group_by(specialty_description) %>% mutate(counts = n())
+  
+  # if any counts under 200, rename to toher
+  dat_full$specialty_description <- ifelse(dat_full$counts < 100, 'Other', as.character(dat_full$specialty_description))
   
   # save data 
   saveRDS(dat_full, '../Data/saved_data/dat_full_fl.rda')
   
 }
-
