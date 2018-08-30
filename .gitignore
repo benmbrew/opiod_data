@@ -8,9 +8,9 @@
 # Example code in package build process
 *-Ex.R
 
-Data/*
+data/*
 
-/Data/*
+/data/*
 
 
 # Output files from R CMD build
